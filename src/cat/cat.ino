@@ -18,8 +18,8 @@
 
 Adafruit_GPS GPS(&GPSSerial);
 
-#define CLIENT_ADDRESS 1
-#define SERVER_ADDRESS 2
+#define CAT1 1
+#define GATEWAY_ADDRESS 2
 
 #define RFM95_CS 8
 #define RFM95_RST 4
@@ -33,7 +33,7 @@ Adafruit_GPS GPS(&GPSSerial);
 RH_RF95 driver(RFM95_CS, RFM95_INT);
 
 // Class to manage message delivery and receipt, using the driver declared above
-RHReliableDatagram manager(driver, CLIENT_ADDRESS);
+RHReliableDatagram manager(driver, CAT1);
 
 // Need this on Arduino Zero with SerialUSB port (eg RocketScream Mini Ultra Pro)
 //#define Serial SerialUSB
@@ -101,7 +101,9 @@ void loop() {
       log(" => Sat: " + String(GPS.satellites) );
 			if (GPS.fix) {
         log("FIXED!");
-        dataStr = "#" + String(GPS.latitude,4)
+        dataStr = "#" + String(CAT1)
+                      + "|"
+                      + String(GPS.latitude,4)
                       + String(GPS.lat)
                       + "|"
                       + String(GPS.longitude,4)
@@ -137,7 +139,7 @@ void loop() {
 	}
  
 	// Send a message to manager_server
-	if (manager.sendtoWait((uint8_t*)dataStr.c_str(), dataStr.length(), SERVER_ADDRESS)) {
+	if (manager.sendtoWait((uint8_t*)dataStr.c_str(), dataStr.length(), GATEWAY_ADDRESS)) {
 		// Now wait for a reply from the server
 		uint8_t len = sizeof(buf);
 		uint8_t from;

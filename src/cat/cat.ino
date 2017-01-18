@@ -25,6 +25,8 @@ Adafruit_GPS GPS(&GPSSerial);
 #define RFM95_RST 4
 #define RFM95_INT 3
 
+#define VBATPIN A7
+
 #define LED 13
 
 // Singleton instance of the radio driver
@@ -116,7 +118,9 @@ void loop() {
                       + String(GPS.hour, DEC) + String(':')
                       + String(GPS.minute, DEC) + String(':')
                       + String(GPS.seconds, DEC) + String('.')
-                      + String(GPS.milliseconds) + "#";
+                      + String(GPS.milliseconds)
+                      + "|"
+                      + String(getBatteryStatus())+ "#";
         log(dataStr);
 			} else {
         log("No GPS fix");
@@ -162,6 +166,14 @@ void setupLog() {
 		while (!Serial)
 			; // Wait for serial port to be available
 	}
+}
+
+float getBatteryStatus() {
+  float measuredvbat = analogRead(VBATPIN);
+  measuredvbat *= 2;    // we divided by 2, so multiply back
+  measuredvbat *= 3.3;  // Multiply by 3.3V, our reference voltage
+  measuredvbat /= 1024; // convert to voltage
+  return measuredvbat;
 }
 
 void logf(char *fmt, ...) {

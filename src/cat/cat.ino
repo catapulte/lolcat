@@ -1,25 +1,33 @@
-// rf95_reliable_datagram_client.pde
-// -*- mode: C++ -*-
-// Example sketch showing how to create a simple addressed, reliable messaging client
-// with the RHReliableDatagram class, using the RH_RF95 driver to control a RF95 radio.
-// It is designed to work with the other example rf95_reliable_datagram_server
-// Tested with Anarduino MiniWirelessLoRa, Rocket Scream Mini Ultra Pro with the RFM95W
+//
+// Lolcat transmitter
+//
 
 #define DEBUG true
+#define GATEWAY_COMM_TIME_INTERVAL 5000
+
 
 #include <stdarg.h>
 #include <Adafruit_GPS.h>
 #include <RHReliableDatagram.h>
 #include <RH_RF95.h>
 #include <SPI.h>
+#include <Adafruit_Sensor.h>
+#include <DHT.h>
+#include <DHT_U.h>
 
+#define DHTPIN 11   
+
+#define DHTTYPE DHT22   // DHT 22  (AM2302), AM2321
+
+DHT_Unified dht(DHTPIN, DHTTYPE);
 
 #define GPSSerial Serial1
 
 Adafruit_GPS GPS(&GPSSerial);
 
+#define GATEWAY_ADDRESS 254
 #define CAT1 1
-#define GATEWAY_ADDRESS 2
+
 
 #define RFM95_CS 8
 #define RFM95_RST 4
@@ -35,13 +43,12 @@ RH_RF95 driver(RFM95_CS, RFM95_INT);
 // Class to manage message delivery and receipt, using the driver declared above
 RHReliableDatagram manager(driver, CAT1);
 
-// Need this on Arduino Zero with SerialUSB port (eg RocketScream Mini Ultra Pro)
-//#define Serial SerialUSB
 
 void setup() {
 	setupLog();
 	setupGPS();
 	setupLora();
+  dht.begin();
 }
 
 void setupGPS() {
@@ -49,18 +56,8 @@ void setupGPS() {
 
 	// 9600 NMEA is the default baud rate for Adafruit MTK GPS's- some use 4800
 	GPS.begin(9600);
-	// uncomment this line to turn on RMC (recommended minimum) and GGA (fix data) including altitude
 	GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
-	// uncomment this line to turn on only the "minimum recommended" data
-	//GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCONLY);
-	// For parsing data, we don't suggest using anything but either RMC only or RMC+GGA since
-	// the parser doesn't care about other sentences at this time
-	// Set the update rate
 	GPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ); // 1 Hz update rate
-	// For the parsing code to work nicely and have time to sort thru the data, and
-	// print it out we don't suggest using anything higher than 1 Hz
-
-	// Request updates on antenna status, comment out to keep quiet
 	GPS.sendCommand(PGCMD_ANTENNA);
 
 	delay(1000);
@@ -70,40 +67,82 @@ void setupGPS() {
 }
 
 void setupLora() {
+  
 	pinMode(RFM95_RST, OUTPUT);
-	digitalWrite(RFM95_RST, HIGH);
+  // manual reset
+  digitalWrite(RFM95_RST, LOW);
+  delay(10);
+  digitalWrite(RFM95_RST, HIGH);
+  delay(10);
   
 	pinMode(LED, OUTPUT);
 
-	if (!manager.init()) {
-		log("init failed");
-	}
-	// Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
+	if (!manager.init()) 
+		log("Erreur d'initialisation");
+  
+  //manager.setTimeout(1000);
+  //manager.setRetries(5);
+  
+  //modify ModemConfig for a Slow+long range.
+  //driver.setModemConfig(RH_RF95::Bw31_25Cr48Sf512);
+  //driver.setModemConfig(RH_RF95::Bw125Cr48Sf4096);
+	//driver.setTxPower(23, false);
 
-	// The default transmitter power is 13dBm, using PA_BOOST.
-	// If you are using RFM95/96/97/98 modules which uses the PA_BOOST transmitter pin, then
-	// you can set transmitter powers from 5 to 23 dBm:
-	driver.setTxPower(23, false);
+  sendData("#"+String(CAT1)+"|initDone#");
+  return;
 }
 
 uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
 
 void loop() {
-	char c = GPS.read();
-	//log(String(c));
 
-  String dataStr;
+  //Retrieve data from GPS  
+  //ex #1|4810.8477N|126.8529W|346.34|107.00|6|29/1/2017@21:11:42.0|26.50|29.80|4.07#
+  String gpsData="";//getGPSData();
+
+  //no GPS data => exit from the loop and try again
+  if (strstr(gpsData.c_str(), "ERROR") != NULL) {
+    log(gpsData);
+    return;
+  }
+
+  String dhtData="";//getDHTData();
+  log(dhtData);
+
+  //format data
+  /*String dataStr = "#" + String(CAT1);
+                      + "|"
+                      + gpsData
+                      + "|" 
+                      + dhtData
+                      + "|" 
+                      + String(getBatteryStatus())+ "#";*/
+                      
+   String dataStr = "4810.8477N";
+	 //  String dataStr = "#1|4810.8477N|126.8529W|346.34|107.00|6|29/1/2017@21:11:42.0|26.50|29.80|4.07#";
+
+	//send to lora network
+	sendData(dataStr);
   
-	if (GPS.newNMEAreceived()) {
-		//log(GPS.lastNMEA()); Dont read this stupid, the flag is set to false after use
-		if (GPS.parse(GPS.lastNMEA())) {
+	delay(GATEWAY_COMM_TIME_INTERVAL);
+
+	digitalWrite(LED, LOW);
+	delay(200);
+	digitalWrite(LED, HIGH);
+	delay(200);
+	digitalWrite(LED, LOW);
+}
+
+
+String getGPSData(){
+  String dataStr;
+  char c = GPS.read();
+  if (GPS.newNMEAreceived()) {
+    if (GPS.parse(GPS.lastNMEA())) {
       log(" => " + String(GPS.hour) + ":" + String(GPS.minute));
       log(" => Sat: " + String(GPS.satellites) );
-			if (GPS.fix) {
-        log("FIXED!");
-        dataStr = "#" + String(CAT1)
-                      + "|"
-                      + String(GPS.latitude,4)
+      if (GPS.fix) {
+        dataStr = String(GPS.latitude,4)
                       + String(GPS.lat)
                       + "|"
                       + String(GPS.longitude,4)
@@ -113,6 +152,8 @@ void loop() {
                       +"|"
                       + String(GPS.altitude)
                       +"|"
+                      + String(GPS.satellites)
+                      +"|"
                       + String(GPS.day, DEC)+ String('/')
                       + String(GPS.month, DEC)
                       + String("/20") + String(GPS.year, DEC)
@@ -120,54 +161,51 @@ void loop() {
                       + String(GPS.hour, DEC) + String(':')
                       + String(GPS.minute, DEC) + String(':')
                       + String(GPS.seconds, DEC) + String('.')
-                      + String(GPS.milliseconds)
-                      + "|"
-                      + String(getBatteryStatus())+ "#";
-        log(dataStr);
-			} else {
-        log("No GPS fix");
-        dataStr="F*** i'm lost";
-        return;
-			}
-		} else {
-			log("unable to parse NMEA sentence");
-      return;
+                      + String(GPS.milliseconds);
+      } else {
+        dataStr="ERROR:NoGPS";
+      }
+    } else {
+      dataStr="ERROR:ParseError";
     }
-	} else {
-		//log("no NMEA sentence received");
-    return;
-	}
- 
-	// Send a message to manager_server
-	if (manager.sendtoWait((uint8_t*)dataStr.c_str(), dataStr.length(), GATEWAY_ADDRESS)) {
-		// Now wait for a reply from the server
-		uint8_t len = sizeof(buf);
-		uint8_t from;
-		if (manager.recvfromAckTimeout(buf, &len, 2000, &from)) {
-			log("Message ACK");
-		} else {
-			log("No reply, is rf95_reliable_datagram_server running?");
-			digitalWrite(LED, HIGH);
-		}
-	} else {
-		log("sendtoWait failed");
-    //TODO if Failed, add in FIFO (with limited size) to keep data & send when link with gateway is back.
-		digitalWrite(LED, HIGH);
-	}
-	delay(5000);
-	digitalWrite(LED, LOW);
-	delay(200);
-	digitalWrite(LED, HIGH);
-	delay(200);
-	digitalWrite(LED, LOW);
+  } else {
+    dataStr="ERROR:NoNMEA";
+  }
+  return dataStr;
+}
+String getDHTData(){
+
+  sensors_event_t eventtemp;  
+  dht.temperature().getEvent(&eventtemp);
+  
+  sensors_event_t eventhum;  
+  dht.humidity().getEvent(&eventhum);
+  
+  float h = eventhum.relative_humidity;
+  float t = eventtemp.temperature;
+
+  // Check if any reads failed and exit early (to try again).
+  if (isnan(h) || isnan(t)) {
+    log("Failed to read from DHT sensor!");
+    return "0|0";
+  }
+  return String(t,2)+"|"+String(h,2);
 }
 
-void setupLog() {
-	if (DEBUG) {
-		Serial.begin(19200);
-		while (!Serial)
-			; // Wait for serial port to be available
-	}
+boolean sendData(String dataStr) {
+  log("Sending : "+dataStr);
+  log("Size : "+String(dataStr.length()));
+  
+  // Send a message to gateway
+  if (!manager.sendtoWait((uint8_t*)dataStr.c_str(), dataStr.length(), GATEWAY_ADDRESS)) {
+  //if (!manager.sendtoWait((uint8_t*)dataStr.c_str(), dataStr.length(), RH_BROADCAST_ADDRESS)) {
+    log("sendtoWait failed");
+    //TODO if Failed, add in FIFO (with limited size) to keep data & send when link with gateway is back.
+    digitalWrite(LED, HIGH);
+  }
+  
+  //put lora radio into low-power sleep mode
+  driver.sleep();
 }
 
 float getBatteryStatus() {
@@ -178,14 +216,11 @@ float getBatteryStatus() {
   return measuredvbat;
 }
 
-void logf(char *fmt, ...) {
+void setupLog() {
 	if (DEBUG) {
-		char buf[128]; // resulting string limited to 128 chars
-		va_list args;
-		va_start(args, fmt);
-		vsnprintf(buf, 128, fmt, args);
-		va_end(args);
-		Serial.println(buf);
+		Serial.begin(19200);
+		while (!Serial)
+			; // Wait for serial port to be available
 	}
 }
 

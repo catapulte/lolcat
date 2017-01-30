@@ -3,7 +3,7 @@
 //
 
 #define DEBUG true //enable Serial logging
-#define SEND_TO_ESP true //enable data transmission to ESP through SerialSoftware
+#define SEND_TO_ESP false //enable data transmission to ESP through SerialSoftware
 
 #include <SoftwareSerial.h>
 #include <RHReliableDatagram.h>
@@ -11,10 +11,10 @@
 #include <SPI.h>
 
 // Network Adresses
-#define CLIENT_ADDRESS 1
-#define SERVER_ADDRESS 2
+#define GATEWAY_ADDRESS 254
+#define CAT1 1
 
-// PIn Configuration for M0 Feather
+// PIn Configuration for LoRa Featherwing
 #define RFM95_CS 10
 #define RFM95_RST 9
 #define RFM95_INT 2
@@ -26,37 +26,41 @@ SoftwareSerial espSerial(5,6); // RX, TX for Serial transmettion to the ESP8266
 RH_RF95 driver(RFM95_CS, RFM95_INT);
 
 // Class to manage message delivery and receipt, using the driver declared above
-RHReliableDatagram manager(driver, SERVER_ADDRESS);
+RHReliableDatagram manager(driver, GATEWAY_ADDRESS);
 
 void setup() 
 {
-  pinMode(RFM95_RST, OUTPUT);
-  digitalWrite(RFM95_RST, HIGH);
-
+  
   setupLog();
   setupEspSerial();
+
+  pinMode(RFM95_RST, OUTPUT);
+  // manual reset
+  digitalWrite(RFM95_RST, LOW);
+  delay(10);
+  digitalWrite(RFM95_RST, HIGH);
+  delay(10);
   
   log("Initialisation LoRa");
   if (!manager.init())
     log("Erreur d'initialisation");
-  // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
-
-  // The default transmitter power is 13dBm, using PA_BOOST.
-  // If you are using RFM95/96/97/98 modules which uses the PA_BOOST transmitter pin, then 
-  // you can set transmitter powers from 5 to 23 dBm:
-  driver.setTxPower(23, false);
+    
+  //manager.setTimeout(1000);
+  //manager.setRetries(5);
+  
+  //modify ModemConfig for a Slow+long range.
+  //driver.setModemConfig(RH_RF95::Bw31_25Cr48Sf512);
+  //driver.setModemConfig(RH_RF95::Bw125Cr48Sf4096);
+  //driver.setTxPower(23, false);
 
   sendToEsp("#GatewayUP#");
 }
-
-uint8_t ack_data[] = "ACK";
 
 // Dont put this on the stack:
 uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
 
 void loop()
 {
-  
   //log("Attente de message");
   if (manager.available())
   {
@@ -65,10 +69,12 @@ void loop()
     uint8_t from;
     if (manager.recvfromAck(buf, &len, &from))
     {
+      log("Received from Cat n"+String(from)+" : " + String((char*)buf));
+      //log rssi (Received Signal Strength Indication)
+      //This number will range from about -15 to about -100. The larger the number (-15 being the highest you'll likely see) 
+      log("RSSI: " + String(driver.lastRssi(), DEC));
+      
       sendToEsp((char*)buf);
-      // Send a reply back to the originator client
-      if (!manager.sendtoWait(ack_data, sizeof(ack_data), from))
-        log("Impossible d'envoyer l'acquittement");
     }
   }
 }

@@ -45,13 +45,13 @@ void setup()
   if (!manager.init())
     log("Erreur d'initialisation");
     
-  //manager.setTimeout(1000);
+  manager.setTimeout(500);
   //manager.setRetries(5);
   
   //modify ModemConfig for a Slow+long range.
   //driver.setModemConfig(RH_RF95::Bw31_25Cr48Sf512);
-  //driver.setModemConfig(RH_RF95::Bw125Cr48Sf4096);
-  //driver.setTxPower(23, false);
+  driver.setModemConfig(RH_RF95::Bw125Cr48Sf4096);
+  driver.setTxPower(23, false);
 
   sendToEsp("#GatewayUP#");
 }

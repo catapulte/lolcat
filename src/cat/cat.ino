@@ -25,8 +25,9 @@ DHT_Unified dht(DHTPIN, DHTTYPE);
 
 Adafruit_GPS GPS(&GPSSerial);
 
-#define GATEWAY_ADDRESS 254
 #define CAT1 1
+
+#define GATEWAY_ADDRESS 254
 
 
 #define RFM95_CS 8
@@ -80,13 +81,13 @@ void setupLora() {
 	if (!manager.init()) 
 		log("Erreur d'initialisation");
   
-  //manager.setTimeout(1000);
+  manager.setTimeout(500);
   //manager.setRetries(5);
   
   //modify ModemConfig for a Slow+long range.
   //driver.setModemConfig(RH_RF95::Bw31_25Cr48Sf512);
-  //driver.setModemConfig(RH_RF95::Bw125Cr48Sf4096);
-	//driver.setTxPower(23, false);
+  driver.setModemConfig(RH_RF95::Bw125Cr48Sf4096);
+	driver.setTxPower(23, false);
 
   sendData("#"+String(CAT1)+"|initDone#");
   return;
@@ -118,8 +119,8 @@ void loop() {
                       + "|" 
                       + String(getBatteryStatus())+ "#";*/
                       
-   String dataStr = "4810.8477N";
-	 //  String dataStr = "#1|4810.8477N|126.8529W|346.34|107.00|6|29/1/2017@21:11:42.0|26.50|29.80|4.07#";
+  // String dataStr = "Hello world";
+  String dataStr = "1 4810.8477N 126.8529W 346.34 107.00 6 29/1/2017@21:11:42.0 26.50 29.80 4.07";
 
 	//send to lora network
 	sendData(dataStr);

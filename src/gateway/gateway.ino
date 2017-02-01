@@ -49,8 +49,8 @@ void setup()
   //manager.setRetries(5);
   
   //modify ModemConfig for a Slow+long range.
-  //driver.setModemConfig(RH_RF95::Bw31_25Cr48Sf512);
-  driver.setModemConfig(RH_RF95::Bw125Cr48Sf4096);
+  driver.setModemConfig(RH_RF95::Bw31_25Cr48Sf512);
+  //driver.setModemConfig(RH_RF95::Bw125Cr48Sf4096);
   driver.setTxPower(23, false);
 
   sendToEsp("#GatewayUP#");

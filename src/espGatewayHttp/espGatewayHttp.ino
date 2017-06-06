@@ -8,14 +8,14 @@
 #include <ESP8266WiFi.h>
 
 //Http Server
-#define http_server "192.168.1.16"
-#define http_port 8080
+#define http_server "https://simple.lolcat.passoire.net/"
+#define http_port 443
 #define endPoint "/location?rawdata="
 
 
 //Network Configuration
-const char *ssid = "Livebox-07F0";
-const char *password = "AurelieYoan83";
+const char *ssid = "lolcat";
+const char *password = "taclol";
 
 SoftwareSerial espSerial(0, 2, false, 256); //rx , tx
 

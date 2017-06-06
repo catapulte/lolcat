@@ -2,8 +2,8 @@
 // Lolcat Gateway, Lora to Serial
 //
 
-#define DEBUG true //enable Serial logging
-#define SEND_TO_ESP false //enable data transmission to ESP through SerialSoftware
+#define DEBUG false //enable Serial logging
+#define SEND_TO_ESP true //enable data transmission to ESP through SerialSoftware
 
 #include <SoftwareSerial.h>
 #include <RHReliableDatagram.h>

@@ -2,25 +2,25 @@
 // Lolcat ESP Gateway, Serial to Mqtt
 //
 
-#define DEBUG true //enable Serial logging
+#define DEBUG false //enable Serial logging
 
 #include "SoftwareSerial.h"
 #include "PubSubClient.h"
 #include <ESP8266WiFi.h>
 
 
-#define mqtt_server "192.168.1.16"
+#define mqtt_server "simple.lolcat.passoire.net"
 #define mqtt_port 1883
 
-#define mqtt_user "guest" 
-#define mqtt_password "guest"
-#define mqtt_topic "rawdata"
+#define mqtt_user "lolcat" 
+#define mqtt_password "lolcat"
+#define mqtt_topic "cat.data"
 
 
 
 //Network Configuration
-const char *ssid = "Livebox-07F0";
-const char *password = "AurelieYoan83";
+const char *ssid = "lolcat";
+const char *password = "taclollol";
 
 
 SoftwareSerial espSerial(0, 2, false, 256); //rx , tx

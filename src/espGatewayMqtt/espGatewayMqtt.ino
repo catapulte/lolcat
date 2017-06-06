@@ -38,7 +38,7 @@ void setup()
   setupWifi();
 
   client.setServer(mqtt_server, mqtt_port);
-  client.setCallback(callback);
+  //client.setCallback(callback);
 }
 
 void loop()
@@ -66,13 +66,17 @@ String readSoftSerial()
   return readString;
 }
 
-void callback(char* topic, byte* payload, unsigned int length) {
-  return;
-}
-
 void mqttSend(const char *msg)
 {
-  client.publish(mqtt_topic, msg, true);
+  //while (!client.connected()) {
+    String clientId = "ESP8266Client-";
+    clientId += String(random(0xffff), HEX);
+    // Attempt to connect
+    if (client.connect(clientId.c_str(),mqtt_user,mqtt_password)) {
+      log("connected");
+      client.publish(mqtt_topic, msg);
+    } 
+ // }
 }
 
 void setupWifi()
